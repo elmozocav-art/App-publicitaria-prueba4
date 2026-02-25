@@ -1,0 +1,26 @@
+name: Bot Automatizado DarpePro
+on:
+  schedule:
+    - cron: '0 * * * *' # Ejecuta el script cada hora
+  workflow_dispatch: # Esto añade un botón para que puedas probarlo tú mismo
+
+jobs:
+  ejecutar_bot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar mi código
+        uses: actions/checkout@v3
+
+      - name: Preparar Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Instalar librerías necesarias
+        run: pip install gspread google-auth requests
+
+      - name: Correr el script de Python
+        env:
+          # Aquí es donde GitHub abre la "caja fuerte" que configuraste
+          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+        run: python main.py
