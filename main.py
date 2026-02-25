@@ -4,21 +4,20 @@ import json
 import os
 from google.oauth2.service_account import Credentials
 
-# --- CONFIGURACIÓN INICIAL ---
+# --- CONFIGURACIÓN DE LA PÁGINA ---
 st.set_page_config(page_title="DarpePro One-Click", page_icon="⚡")
 
 def inicializar_google_sheets():
     try:
-        # 1. Intentar obtener secretos
+        # 1. Obtener secretos de Streamlit
         secret_data = st.secrets.get('GOOGLE_CREDENTIALS')
         if not secret_data:
-            st.error("❌ No se encontraron las credenciales en 'Advanced settings > Secrets'.")
+            st.error("❌ No se encontraron las credenciales en Secrets.")
             return None
 
-        # 2. Cargar y limpiar la clave
+        # 2. Cargar JSON y limpiar la clave para evitar 'Invalid JWT Signature'
         info = json.loads(secret_data)
         if "private_key" in info:
-            # Reemplazo doble para asegurar que la firma sea válida
             info["private_key"] = info["private_key"].replace("\\n", "\n")
         
         # 3. Autenticación
@@ -26,22 +25,21 @@ def inicializar_google_sheets():
         scope = ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive']
         client = gspread.authorize(creds.with_scopes(scope))
         
-        # 4. Abrir hoja
+        # 4. Abrir la hoja
         return client.open("Hoja de DarpePro").sheet1
     
     except Exception as e:
-        st.error(f"❌ Error crítico de conexión: {e}")
+        st.error(f"❌ Error de conexión: {e}")
         return None
 
 def ejecutar_bot_manual():
     hoja = inicializar_google_sheets()
     if hoja:
         try:
-            # Datos del producto a publicar
             nombre_producto = "Set Malcon" 
             url_producto = "https://darpepro.com/set-malcon/"
             
-            # Añadir fila para que Make.com la procese
+            # Añadir fila con estado Pendiente para Make.com
             nueva_fila = [nombre_producto, url_producto, "", "Pendiente"]
             hoja.append_row(nueva_fila)
             return nombre_producto
@@ -53,13 +51,17 @@ def ejecutar_bot_manual():
 st.title("⚡ Publicador Automático DarpePro")
 st.write("Haz clic en el botón para enviar el producto a Instagram.")
 
-# Botón principal
 if st.button('🚀 ¡PUBLICAR SIGUIENTE PRODUCTO AHORA!', use_container_width=True):
-    with st.spinner("Conectando con Google Sheets y Make.com..."):
+    with st.spinner("Conectando..."):
         producto = ejecutar_bot_manual()
         if producto:
-            st.success(f"✅ ¡Éxito! '{producto}' añadido a la cola.")
+            st.success(f"✅ ¡Éxito! '{producto}' enviado correctamente.")
             st.balloons()
 
-# --- PANEL DE CONTROL ---
-with st.expander("
+# --- PANEL DE CONTROL (Corregido para evitar SyntaxError) ---
+with st.expander("⚙️ Configuración y Estado"):
+    st.write("Verifica la conexión con Google Sheets abajo:")
+    if st.button("Probar Conexión"):
+        test = inicializar_google_sheets()
+        if test:
+            st.success("✅ Conexión establecida correctamente.")
