@@ -1,11 +1,5 @@
-streamlit
-Pillow
-openai
 requests
 beautifulsoup4
 gspread
-google-auth
-google-auth-oauthlib
-google-auth-httplib2
-requests
-
+oauth2client
+streamlit
