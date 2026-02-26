@@ -29,7 +29,7 @@ st.title("⚡ Publicador DarpePro")
 if st.button('🚀 PUBLICAR AHORA'):
     cliente = conectar_google()
     if cliente:
-        hoja = cliente.open("Hoja de DarpePro").sheet1
+        hoja = cliente.open("Automatización DarpePro").sheet1
         producto = obtener_producto_aleatorio_total() # Asegúrate que el archivo se llame darpe_scraper.py
         
         if producto:
@@ -37,3 +37,4 @@ if st.button('🚀 PUBLICAR AHORA'):
             st.success(f"✅ ¡Publicado: {producto['nombre']}!")
         else:
             st.error("❌ El Scraper no encontró productos. Revisa el nombre del archivo en GitHub.")
+
