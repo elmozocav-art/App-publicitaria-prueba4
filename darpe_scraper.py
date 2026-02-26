@@ -2,48 +2,51 @@ import requests
 from bs4 import BeautifulSoup
 import random
 
+
 def obtener_producto_aleatorio_total():
+
     url_base = "https://darpepro.com/tienda/"
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
-    }
+    headers = {"User-Agent": "Mozilla/5.0"}
 
     try:
-        response = requests.get(url_base, headers=headers, timeout=15)
+        response = requests.get(url_base, headers=headers, timeout=10)
+
         if response.status_code != 200:
             return None
 
         soup = BeautifulSoup(response.content, "html.parser")
-        
-        # Buscamos los productos por etiquetas estándar de WooCommerce
-        productos = soup.select("li.product") or soup.select(".product")
 
-        if not productos:
+        enlaces = []
+        for a in soup.find_all("a", href=True):
+            href = a["href"]
+            if "/producto/" in href or "/product/" in href:
+                enlaces.append(href)
+
+        enlaces = list(set(enlaces))
+
+        if not enlaces:
             return None
 
-        # Intentamos extraer datos de un producto al azar
-        p = random.choice(productos)
-        
-        # Selectores flexibles para el nombre
-        tag_nombre = p.select_one(".woocommerce-loop-product__title") or p.find("h2") or p.find("h3")
-        nombre = tag_nombre.get_text(strip=True) if tag_nombre else "Producto DarpePro"
-        
-        # Selector para el enlace
-        tag_a = p.find("a")
-        enlace = tag_a["href"] if tag_a else "https://darpepro.com/tienda/"
-        
-        # Selector para la imagen
-        tag_img = p.find("img")
-        imagen = ""
-        if tag_img:
-            imagen = tag_img.get("data-src") or tag_img.get("src") or ""
+        url_producto = random.choice(enlaces)
+
+        response_producto = requests.get(url_producto, headers=headers, timeout=10)
+        soup_producto = BeautifulSoup(response_producto.content, "html.parser")
+
+        titulo = soup_producto.find("h1")
+        nombre = titulo.get_text(strip=True) if titulo else None
+
+        img = soup_producto.find("img")
+        imagen = img["src"] if img and img.get("src") else None
+
+        if not nombre or len(nombre) < 3:
+            return None
 
         return {
             "nombre": nombre,
-            "url": enlace,
+            "url": url_producto,
             "imagen_url": imagen
         }
-            
+
     except Exception as e:
-        print(f"Error en el scraper: {e}")
+        print("Error scraper:", e)
         return None
