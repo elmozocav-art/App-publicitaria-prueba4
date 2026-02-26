@@ -3,64 +3,55 @@ import gspread
 import json
 import os
 from google.oauth2.service_account import Credentials
-# Importamos tu scraper real
+# Importamos tu scraper (asegúrate que el archivo se llame darpe_scraper.py)
 from darpe_scraper import obtener_producto_aleatorio_total
 
 st.set_page_config(page_title="DarpePro Publicador", page_icon="⚡")
 st.title("⚡ Publicador DarpePro")
 
-def conectar_google_sheets():
-    ruta_json = "credenciales.json"
-    
-    # 1. Intentar cargar desde el archivo físico (Streamlit)
-    if os.path.exists(ruta_json):
-        try:
-            with open(ruta_json, 'r') as f:
-                datos = json.load(f)
-        except Exception as e:
-            st.error(f"Error al leer el JSON: {e}")
-            return None
-    # 2. Intentar cargar desde Secretos de GitHub (Para el bot automático)
-    elif os.getenv("GOOGLE_CREDENTIALS"):
-        datos = json.loads(os.getenv("GOOGLE_CREDENTIALS"))
-    else:
-        st.error("❌ No se encontraron credenciales (ni archivo ni Secret).")
-        return None
-
+def conectar_hoja():
     try:
-        # ARREGLO CRÍTICO: Forzar que los \n sean saltos de línea reales
-        # Esto soluciona el 'Invalid JWT Signature' definitivamente
+        # 1. Intentar leer desde Secrets (Streamlit Cloud)
+        if "GOOGLE_CREDENTIALS" in st.secrets:
+            datos = json.loads(st.secrets["GOOGLE_CREDENTIALS"])
+        # 2. Intentar leer desde archivo local (GitHub / Local)
+        elif os.path.exists("credenciales.json"):
+            with open("credenciales.json", 'r') as f:
+                datos = json.load(f)
+        else:
+            st.error("❌ No se encuentran las credenciales en ningún sitio.")
+            return None
+
+        # REPARACIÓN DE LLAVE: Esto elimina el error 'Invalid JWT Signature'
         if "private_key" in datos:
+            # Reemplaza la representación de texto '\\n' por saltos de línea reales
             datos["private_key"] = datos["private_key"].replace("\\n", "\n")
         
         scope = ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive']
         creds = Credentials.from_service_account_info(datos, scopes=scope)
         client = gspread.authorize(creds)
-        
         return client.open("Hoja de DarpePro").sheet1
+        
     except Exception as e:
-        st.error(f"❌ Error de firma o conexión: {str(e)}")
+        st.error(f"❌ Error de autenticación: {e}")
         return None
 
-# --- INTERFAZ ---
-st.write("Haz clic para que el bot busque un producto real y lo mande a publicar.")
-
+# --- BOTÓN PRINCIPAL ---
 if st.button('🚀 ¡PUBLICAR SIGUIENTE PRODUCTO AHORA!', use_container_width=True):
-    with st.spinner("Buscando producto en la tienda y conectando con Google..."):
-        # Llamamos a tu scraper para obtener un producto real
+    with st.spinner("Buscando producto real y conectando..."):
+        # Usamos tu scraper real
         producto = obtener_producto_aleatorio_total()
         
         if producto:
-            hoja = conectar_google_sheets()
+            hoja = conectar_hoja()
             if hoja:
                 try:
-                    # Usamos los datos reales obtenidos del scraper
                     nueva_fila = [producto['nombre'], producto['url'], producto['imagen_url'], "Pendiente"]
                     hoja.append_row(nueva_fila)
-                    st.success(f"✅ ¡Éxito! '{producto['nombre']}' enviado a la hoja.")
+                    st.success(f"✅ ¡Publicado! '{producto['nombre']}' añadido a la hoja.")
                     st.image(producto['imagen_url'], width=200)
                     st.balloons()
                 except Exception as e:
-                    st.error(f"❌ Error al escribir en la hoja: {e}")
+                    st.error(f"Error al escribir: {e}")
         else:
-            st.error("❌ No se pudo extraer ningún producto de la web. Revisa el scraper.")
+            st.error("No se pudo obtener información del producto.")
